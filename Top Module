@@ -1,0 +1,106 @@
+`timescale 1ns / 1ps 
+module UART_Top ( 
+input clk, // Top level system clock input. 
+input uart_rxd, // UART Recieve pin. 
+input resetn , // resetn switch 
+output uart_txd, // UART transmit pin. 
+output [7:0]  data, 
+output reg LA,LC,RA,RC 
+); 
+parameter   PAYLOAD_BITS    = 8; 
+parameter Clk_Hz=100000000;  // Clock frequency in hertz. 
+parameter Baud_Rate=9600;   
+wire [PAYLOAD_BITS-1:0]  uart_rx_data; 
+wire uart_rx_valid; 
+wire uart_rx_break; 
+wire uart_tx_busy; 
+wire [PAYLOAD_BITS-1:0]  uart_tx_data; 
+wire uart_tx_en; 
+reg  [PAYLOAD_BITS-1:0]  data_reg; 
+
+ 
+assign data = data_reg; 
+assign uart_tx_data = uart_rx_data; 
+assign uart_tx_en   = uart_rx_valid; 
+always @(posedge clk) begin 
+    if(!resetn)  
+        data_reg <= 8'hFF; 
+    else if(uart_rx_valid)  
+        data_reg <= uart_rx_data[7:0]; 
+end  
+// UART RX 
+UART_Rx #(.Baud_Rate(Baud_Rate),.PAYLOAD_BITS(PAYLOAD_BITS),.Clk_Hz(Clk_Hz)) uart_rx_dut( 
+.clk (clk ), // Top level system clock input. 
+.resetn (resetn ), // Asynchronous active low reset. 
+.uart_rxd (uart_rxd     ), // UART Recieve pin. 
+.uart_rx_en (1'b1), // Recieve enable 
+.uart_rx_break(uart_rx_break), // Did we get a BREAK message? 
+.uart_rx_valid(uart_rx_valid), // Valid data recieved and available. 
+.uart_rx_data (uart_rx_data )  // The recieved data. 
+); 
+// UART Transmitter module. 
+UART_Tx #(.Baud_Rate(Baud_Rate),.PAYLOAD_BITS(PAYLOAD_BITS),.Clk_Hz(Clk_Hz)) uart_tx_dut( 
+.clk (clk), 
+.resetn (resetn), 
+.uart_txd (uart_txd), 
+.uart_tx_en (uart_tx_en), 
+.uart_tx_busy (uart_tx_busy ), 
+.uart_tx_data (uart_tx_data )  
+); 
+
+ 
+always@(data) 
+case(data) 
+0: 
+begin 
+LC<=0; 
+LA<=0; 
+RC<=0; 
+RA<=0; 
+end 
+1: 
+begin 
+LC<=1; 
+LA<=0; 
+RC<=1; 
+RA<=0; 
+end 
+2: 
+begin 
+LC<=0; 
+LA<=1; 
+RC<=0; 
+RA<=1; 
+end 
+3: 
+begin 
+LC<=1; 
+LA<=0; 
+RC<=0; 
+RA<=0; 
+end 
+
+ 
+4: 
+begin 
+LC<=0; 
+LA<=0; 
+RC<=1; 
+RA<=0; 
+end 
+5: 
+begin 
+LC<=1; 
+LA<=0; 
+RC<=0; 
+RA<=1; 
+end 
+default: 
+begin 
+LC<=0; 
+LA<=0; 
+RC<=0; 
+RA<=0; 
+end 
+endcase 
+endmodule 
